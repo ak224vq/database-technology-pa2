@@ -19,9 +19,12 @@ def creatDatabaseAndTables():  # creates a new database and sets up it's tables
     createTableRecipieIngredientsLink(cursorTemp)
     createTableStorage(cursorTemp)
 
-    query = "CREATE VIEW recipesICanMake AS SELECT DISTINCT(recipeName), foodType FROM recipes JOIN recipeingredientslink ON recipes.recipeName = recipeingredientslink.recipes WHERE recipeingredientslink.ingredients IN (SELECT ingredients FROM storage WHERE recipeingredientslink.ingredients = storage.ingredients AND recipeingredientslink.amount < storage.amount);"
+    query = "CREATE VIEW recipesICanMake AS SELECT DISTINCT(recipeName), foodType FROM recipes WHERE (SELECT count(recipeingredientslink.ingredients) FROM recipeingredientslink JOIN storage ON recipeingredientslink.ingredients = storage.ingredients WHERE recipeingredientslink.recipes = recipes.recipeName AND recipeingredientslink.amount <= storage.amount) = (SELECT count(recipeingredientslink.ingredients) FROM recipeingredientslink WHERE recipeingredientslink.recipes = recipes.recipeName)"
     cursorTemp.execute(query)
+
     cnx.commit()
+    newCursor = cnx.cursor()
+    AddTableContents(newCursor, cnx)
 
 
 def createTable(tableName, collumns, cursor):  # cretes a databeses tables
@@ -42,6 +45,95 @@ def createTableStorage(cursor):
     query = "CREATE TABLE storage (id int, ingredients varchar(50), amount int, PRIMARY KEY(id), FOREIGN KEY(ingredients) REFERENCES ingredients(ingredientName))"
     cursor.execute(query)
 
+def AddTableContents(cursor, cnx):
+    query = "INSERT INTO ingredients (ingredientName) VALUES (%s)"
+    values = ("ingredient1",)
+    cursor.execute(query, values)
+    values = ["ingredient2"]
+    cursor.execute(query, values)
+    values = ["ingredient3"]
+    cursor.execute(query, values)
+    values = ["ingredient4"]
+    cursor.execute(query, values)
+    values = ["ingredient5"]
+    cursor.execute(query, values)
+    values = ["ingredient6"]
+    cursor.execute(query, values)
+    values = ["ingredient7"]
+    cursor.execute(query, values)
+    values = ["ingredient8"]
+    cursor.execute(query, values)
+    values = ["ingredient9"]
+    cursor.execute(query, values)
+
+    query = "INSERT INTO recipes (recipeName, foodType) VALUES (%s, %s)"
+    values = ["recipe1", "type1"]
+    cursor.execute(query, values)
+    values = ["recipe2", "type2"]
+    cursor.execute(query, values)
+    values = ["recipe3", "type3"]
+    cursor.execute(query, values)
+    values = ["recipe4", "type1"]
+    cursor.execute(query, values)
+
+
+    query = "INSERT INTO recipeIngredientslink (id, ingredients, amount, recipes) VALUES (%s, %s, %s, %s)"
+    values = [1, "ingredient1", 5, "recipe1"]
+    cursor.execute(query, values)
+    values = [2, "ingredient2", 1, "recipe1"]
+    cursor.execute(query, values)
+    values = [3, "ingredient3", 3, "recipe1"]
+    cursor.execute(query, values)
+    values = [4, "ingredient4", 7, "recipe1"]
+    cursor.execute(query, values)
+
+    values = [5, "ingredient1", 5, "recipe2"]
+    cursor.execute(query, values)
+    values = [6, "ingredient7", 11, "recipe2"]
+    cursor.execute(query, values)
+    values = [7, "ingredient8", 4, "recipe2"]
+    cursor.execute(query, values)
+
+    values = [8, "ingredient1", 1, "recipe3"]
+    cursor.execute(query, values)
+    values = [9, "ingredient2", 2, "recipe3"]
+    cursor.execute(query, values)
+    values = [10, "ingredient8", 3, "recipe3"]
+    cursor.execute(query, values)
+    values = [11, "ingredient9", 4, "recipe3"]
+    cursor.execute(query, values)
+
+    values = [12, "ingredient1", 5, "recipe4"]
+    cursor.execute(query, values)
+    values = [13, "ingredient3", 5, "recipe4"]
+    cursor.execute(query, values)
+    values = [14, "ingredient5", 5, "recipe4"]
+    cursor.execute(query, values)
+    values = [15, "ingredient7", 5, "recipe4"]
+    cursor.execute(query, values)
+    values = [16, "ingredient9", 5, "recipe4"]
+    cursor.execute(query, values)
+
+    query = "INSERT INTO storage (id, ingredients, amount) VALUES (%s, %s, %s)"
+    values = [1, "ingredient1", 7]
+    cursor.execute(query, values)
+    values = [2, "ingredient2", 13]
+    cursor.execute(query, values)
+    values = [3, "ingredient3", 9]
+    cursor.execute(query, values)
+    values = [4, "ingredient4", 3]
+    cursor.execute(query, values)
+    values = [5, "ingredient5", 2]
+    cursor.execute(query, values)
+    values = [6, "ingredient6", 5]
+    cursor.execute(query, values)
+    values = [7, "ingredient7", 11]
+    cursor.execute(query, values)
+    values = [8, "ingredient8", 17]
+    cursor.execute(query, values)
+    values = [9, "ingredient9", 10]
+    cursor.execute(query, values)
+    cnx.commit()
 
 def recipesOfFood():
     query = "SELECT DISTINCT(foodType), COUNT(foodType) FROM recipes GROUP BY foodType"
@@ -115,7 +207,10 @@ def whatAmIMissing():
     query = "SELECT recipeName FROM recipes"
     cursor.execute(query)
     recipes = cursor.fetchall()
-    print(recipes)
+    x = ""
+    for recipeName in recipes:
+        x = x + recipeName[0] + " "
+    print(x)
     recipeExists = False
     recipeName = input("What recipe to check ")
     while recipeExists == False:
@@ -128,7 +223,7 @@ def whatAmIMissing():
     query = "SELECT recipeingredientslink.ingredients, (recipeingredientslink.amount - storage.amount) FROM recipeingredientslink, storage WHERE recipes = %s AND storage.ingredients = recipeingredientslink.ingredients AND storage.ingredients = recipeingredientslink.ingredients AND recipeingredientslink.amount > (SELECT amount FROM storage WHERE ingredients = recipeingredientslink.ingredients);"
     cursor.execute(query, (recipeName,))
     missingIngredients = cursor.fetchall()
-    if missingIngredients != None:
+    if len(missingIngredients) != 0:
         for ingredient in missingIngredients:
             print("Missing " + str(ingredient[1]) + " amount of ingredient " + ingredient[0])
     else:
@@ -203,7 +298,7 @@ while userInput != "":
     print("5 for every recipe that does not use specific ingredient")
     userInput = input("")
     if userInput == "1":
-        recipesICanMake()
+        recipesICanMake()   
     elif userInput == "2":
         whatAmIMissing()
     elif userInput == "3":
